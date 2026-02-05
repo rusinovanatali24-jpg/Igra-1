@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор игры "Охота за сокровищами" PRO</title>
+    <style>
+        /* Сохраняем ваши базовые стили */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 40px; text-align: center; }
+        .tabs { display: flex; background: #f5f5f5; border-bottom: 2px solid #ddd; }
+        .tab { flex: 1; padding: 20px; text-align: center; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: all 0.3s ease; border: none; background: transparent; color: #666; }
+        .tab.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        .tab-content { padding: 40px; display: none; }
+        .tab-content.active { display: block; }
+        .section { margin-bottom: 40px; padding: 25px; background: #f9f9f9; border-radius: 10px; border-left: 4px solid #667eea; }
+        .section-title { font-size: 1.5em; margin-bottom: 20px; color: #333; display: flex; align-items: center; gap: 10px; }
+        
+        /* Стили для новых функций */
+        .theme-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .theme-card { padding: 15px; border: 3px solid #ddd; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.3s; background: white; }
+        .theme-card.selected { border-color: #667eea; background: #f0f4ff; }
+        
+        /* Улучшенная карта */
+        .map-editor { 
+            position: relative; 
+            width: 100%; 
+            height: 500px; 
+            border: 5px solid #8b4513; 
+            border-radius: 15px; 
+            background-size: cover; 
+            background-position: center;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.2);
+        }
+        
+        /* Маркер Геопозиции */
+        .map-point-editor {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            cursor: move;
+            transform: translate(-50%, -100%); /* Кончик иконки в точке клика */
+            filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));
+            transition: transform 0.1s;
+        }
+        .map-point-editor svg { width: 100%; height: 100%; }
+        .map-point-number {
+            position: absolute;
+            top: 8px; left: 50%;
+            transform: translateX(-50%);
+            color: white; font-weight: bold; font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .answer-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .iframe-container { background: #333; color: #a8e063; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.9em; margin-top: 10px; word-break: break-all; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-success { background: #56ab2f; color: white; }
+        .btn-danger { background: #eb3349; color: white; }
+        .btn-secondary { background: #eee; color: #333; }
+        
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Treasure Hunt Game Editor</h1>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(0)">⚙️ Настройки</button>
+            <button class="tab" onclick="switchTab(1)">❓ Вопросы</button>
+            <button class="tab" onclick="switchTab(2)">🗺️ Карта</button>
+            <button class="tab" onclick="switchTab(3)">👁️ Экспорт/Genially</button>
+        </div>
+
+        <div class="tab-content active">
+            <div class="section">
+                <h2 class="section-title">Тема и Окружение</h2>
+                <div class="theme-selector" id="themeSelector"></div>
+            </div>
+            </div>
+
+        <div class="tab-content">
+            <div class="section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 class="section-title">Вопросы</h2>
+                    <button class="btn btn-success" onclick="addQuestion()">+ Добавить вопрос</button>
+                </div>
+                <div id="questionsList"></div>
+            </div>
+        </div>
+
+        <div class="tab-content">
+            <div class="section">
+                <h2 class="section-title">Расстановка меток</h2>
+                <p>Перетащите иконки на нужные места на карте.</p>
+                <div class="map-editor" id="mapEditor"></div>
+            </div>
+        </div>
+
+        <div class="tab-content">
+            <div class="section">
+                <h2 class="section-title">Интеграция в Genially</h2>
+                <p>Скопируйте этот код и вставьте его в Genially через <b>Insert -> Others</b>:</p>
+                <div class="iframe-container" id="geniallyCode"></div>
+                <button class="btn btn-secondary" style="margin-top:10px;" onclick="copyIframe()">📋 Копировать код</button>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn btn-success" onclick="exportGame()" style="padding: 20px 40px;">💾 Скачать .html игру</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script>
+        var editorData = {
+            theme: 'pirates',
+            questions: [],
+            mapPoints: []
+        };
+
+        const themes = [
+            {id:'pirates', name:'Пираты', icon:'🏴‍☠️', img:'https://img.freepik.com/free-vector/treasure-map-background-design_23-2148616535.jpg'},
+            {id:'space', name:'Космос', icon:'🚀', img:'https://img.freepik.com/free-vector/outer-space-background-with-planets_1308-80983.jpg'},
+            {id:'jungle', name:'Джунгли', icon:'🌴', img:'https://img.freepik.com/free-vector/jungle-landscape-with-vines-illustration_1308-96944.jpg'},
+            {id:'underwater', name:'Морское дно', icon:'🐠', img:'https://img.freepik.com/free-vector/underwater-background-with-sea-weeds_1308-30514.jpg'},
+            {id:'city', name:'Город', icon:'🏙️', img:'https://img.freepik.com/free-vector/city-skyline-concept-illustration_114360-892.jpg'}
+        ];
+
+        function switchTab(index) {
+            document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab')[index].classList.add('active');
+            document.querySelectorAll('.tab-content')[index].classList.add('active');
+            if(index === 3) generateGeniallyCode();
+        }
+
+        function renderThemes() {
+            const container = document.getElementById('themeSelector');
+            container.innerHTML = themes.map(t => `
+                <div class="theme-card ${t.id === editorData.theme ? 'selected' : ''}" onclick="selectTheme('${t.id}')">
+                    <div style="font-size:3em">${t.icon}</div>
+                    <div>${t.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectTheme(id) {
+            editorData.theme = id;
+            renderThemes();
+            const theme = themes.find(t => t.id === id);
+            document.getElementById('mapEditor').style.backgroundImage = `url('${theme.img}')`;
+        }
+
+        function addQuestion() {
+            const q = {
+                id: Date.now(),
+                text: 'Новый вопрос',
+                answers: [{id: 1, text: 'Ответ 1', correct: true}]
+            };
+            editorData.questions.push(q);
+            renderQuestions();
+            updateMapPoints();
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questionsList');
+            container.innerHTML = editorData.questions.map((q, idx) => `
+                <div class="section" style="background:white; border: 1px solid #ddd;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <b>Вопрос №${idx+1}</b>
+                        <button class="btn-danger" onclick="deleteQuestion(${q.id})">Удалить вопрос</button>
+                    </div>
+                    <input type="text" value="${q.text}" onchange="updateQText(${q.id}, this.value)" style="margin-bottom:10px;">
+                    <div id="answers_${q.id}">
+                        ${q.answers.map(a => `
+                            <div class="answer-item">
+                                <input type="radio" name="correct_${q.id}" ${a.correct?'checked':''} onchange="setCorrect(${q.id}, ${a.id})">
+                                <input type="text" value="${a.text}" onchange="updateAText(${q.id}, ${a.id}, this.value)">
+                                <button class="btn-danger" onclick="removeAnswer(${q.id}, ${a.id})">×</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-secondary" onclick="addAnswer(${q.id})">+ Добавить вариант</button>
+                </div>
+            `).join('');
+        }
+
+        // Функции для работы с вариантами ответов
+        function addAnswer(qId) {
+            const q = editorData.questions.find(q => q.id === qId);
+            q.answers.push({id: Date.now(), text: 'Новый вариант', correct: false});
+            renderQuestions();
+        }
+
+        function removeAnswer(qId, aId) {
+            const q = editorData.questions.find(q => q.id === qId);
+            if(q.answers.length > 1) {
+                q.answers = q.answers.filter(a => a.id !== aId);
+                renderQuestions();
+            }
+        }
+
+        function setCorrect(qId, aId) {
+            const q = editorData.questions.find(q => q.id === qId);
+            q.answers.forEach(a => a.correct = (a.id === aId));
+        }
+
+        function updateQText(id, val) { editorData.questions.find(q => q.id === id).text = val; }
+        function updateAText(qId, aId, val) { 
+            editorData.questions.find(q => q.id === qId).answers.find(a => a.id === aId).text = val; 
+        }
+
+        function deleteQuestion(id) {
+            editorData.questions = editorData.questions.filter(q => q.id !== id);
+            renderQuestions();
+            updateMapPoints();
+        }
+
+        // КАРТА И МАРКЕРЫ
+        function updateMapPoints() {
+            const map = document.getElementById('mapEditor');
+            const count = editorData.questions.length;
+            
+            // Синхронизация точек с вопросами
+            if (editorData.mapPoints.length < count) {
+                for(let i=editorData.mapPoints.length; i<count; i++) {
+                    editorData.mapPoints.push({id: i+1, x: 10 + (i*10)%80, y: 50});
+                }
+            }
+            editorData.mapPoints = editorData.mapPoints.slice(0, count);
+
+            map.innerHTML = editorData.mapPoints.map(p => `
+                <div class="map-point-editor" id="point_${p.id}" style="left:${p.x}%; top:${p.y}%;" onmousedown="startDrag(event, ${p.id})">
+                    <span class="map-point-number">${p.id}</span>
+                    <svg viewBox="0 0 24 24" fill="#e74c3c" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 7 13 8 14 1-1 8-8.75 8-14 0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+                    </svg>
+                </div>
+            `).join('');
+        }
+
+        let draggedId = null;
+        function startDrag(e, id) {
+            draggedId = id;
+            document.onmousemove = (ev) => {
+                const rect = document.getElementById('mapEditor').getBoundingClientRect();
+                let x = ((ev.clientX - rect.left) / rect.width) * 100;
+                let y = ((ev.clientY - rect.top) / rect.height) * 100;
+                
+                x = Math.max(2, Math.min(98, x));
+                y = Math.max(5, Math.min(98, y));
+
+                const p = editorData.mapPoints.find(p => p.id === draggedId);
+                p.x = x; p.y = y;
+                const el = document.getElementById(`point_${draggedId}`);
+                el.style.left = x + '%';
+                el.style.top = y + '%';
+            };
+            document.onmouseup = () => { document.onmousemove = null; };
+        }
+
+        // ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY
+        function generateGeniallyCode() {
+            // В реальности тут должен быть URL на хостинг, где лежит ваш плеер игры
+            const dummyUrl = "https://your-game-hosting.com/player.html?data=" + btoa(JSON.stringify(editorData));
+            const iframe = `<iframe src="${dummyUrl}" width="800" height="600" frameborder="0" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`;
+            document.getElementById('geniallyCode').innerText = iframe;
+        }
+
+        function copyIframe() {
+            const text = document.getElementById('geniallyCode').innerText;
+            navigator.clipboard.writeText(text);
+            alert("Код скопирован!");
+        }
+
+        // Инициализация
+        window.onload = () => {
+            renderThemes();
+            selectTheme('pirates');
+            addQuestion();
+        };
+    </script>
+</body>
+</html>
